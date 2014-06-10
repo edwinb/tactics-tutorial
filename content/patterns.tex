@@ -1,0 +1,417 @@
+\section{Pattern Matching Proofs}
+
+In this section, we will provide a proof of \texttt{plus\_commutes} directly,
+by writing a pattern matching definition. We will use interactive editing
+features extensively, since it is significantly easier to produce a proof
+when the machine can give the types of intermediate values and construct
+components of the proof itself. The commands we will use are summarised
+in Figure \ref{commands}. Where we refer to commands directly, we will
+use the Vim version, but these commands have a direct mapping to Emacs commands.
+
+\newcommand{\mkdef}{\texttt{$\backslash$d}}
+\newcommand{\mklem}{\texttt{$\backslash$l}}
+\newcommand{\ctype}{\texttt{$\backslash$t}}
+\newcommand{\csplit}{\texttt{$\backslash$c}}
+\newcommand{\psearch}{\texttt{$\backslash$o}}
+
+\begin{figure}
+\begin{tabular}{|l|l|l|l|}
+\hline
+Command & Vim binding & Emacs binding & Explanation \\
+\hline
+\hline
+Check type & \texttt{$\backslash$t} & \texttt{C-c C-t} & 
+\begin{minipage}{7cm}
+Show type of identifier or metavariable under the cursor.\\
+\end{minipage}\\
+\hline
+Proof search & \texttt{$\backslash$o} & \texttt{C-c C-o} &
+\begin{minipage}{7cm}
+Attempt to solve metavariable under the cursor by applying simple proof
+search.\\
+\end{minipage}
+\\
+\hline
+Make new definition & \texttt{$\backslash$d} & \texttt{C-c C-d} &
+\begin{minipage}{7cm}
+Add a template definition for the type defined under the cursor.\\
+\end{minipage}
+\\
+\hline
+Make lemma & \texttt{$\backslash$l} & \texttt{C-c C-l} &
+\begin{minipage}{7cm}
+Add a top level function with a type which solves the metavariable under the
+cursor.\\
+\end{minipage}
+\\
+\hline
+Split cases & \texttt{$\backslash$c} & \texttt{C-c C-c} &
+\begin{minipage}{7cm}
+Create new constructor patterns for each possible case of the variable under 
+the cursor.\\
+\end{minipage}
+\\
+\hline
+\end{tabular}
+\caption{Interactive Editing Commands}
+\label{commands}
+\end{figure}
+
+\subsection{Creating a Definition}
+
+To begin, create a file \texttt{pluscomm.idr}
+containing the following type declaration:
+
+\begin{code}
+total
+plus_commutes : (n : Nat) -> (m : Nat) -> n + m = m + n
+\end{code}
+
+\noindent
+The \texttt{total} annotation means that we aim to write a function which
+passes the totality checker; i.e. it will terminate on all possible
+well-typed inputs. This is important for proofs, since it provides a 
+guarantee that the proof is valid in \emph{all} cases, not just those for
+which it happens to be well-defined.
+
+To create a template definition for the proof, press \mkdef{}
+the equivalent in your editor of choice) on the line with the type
+declaration. You should see:
+
+\begin{code}
+total
+plus_commutes : (n : Nat) -> (m : Nat) -> n + m = m + n
+plus_commutes n m = ?plus_commutes_rhs
+\end{code}
+
+\noindent
+To prove this by induction on \texttt{n}, as we sketched in Section
+\ref{sect:induction}, we begin with a case split on \texttt{n} (press
+\csplit{}
+with the cursor over the \texttt{n} in the definition.) You
+should see:
+
+\begin{code}
+total
+plus_commutes : (n : Nat) -> (m : Nat) -> n + m = m + n
+plus_commutes Z m = ?plus_commutes_rhs_1
+plus_commutes (S k) m = ?plus_commutes_rhs_2
+\end{code}
+
+\noindent
+If we inspect the types of the newly created metavariables, 
+\texttt{plus\_commutes\_rhs\_1}
+and 
+\texttt{plus\_commutes\_rhs\_2}, we see that the type of each reflects that
+\texttt{n} has been refined to \texttt{Z} and \texttt{S k} in each respective
+case. Pressing \ctype{} over \texttt{plus\_commutes\_rhs\_1} shows:
+
+\begin{code}
+  m : Nat
+--------------------------------------
+plus_commutes_rhs_1 : m = plus m 0
+\end{code}
+
+\noindent
+Note that \texttt{Z} renders as \texttt{0} because the pretty printer renders
+natural numbers as integer literals for readability.
+Similarly, for \texttt{plus\_commutes\_rhs\_2}:
+
+\begin{code}
+  k : Nat
+  m : Nat
+--------------------------------------
+plus_commutes_rhs_2 : S (plus k m) = plus m (S k)
+\end{code}
+
+\noindent
+It is a good idea to give these slightly more meaningful names:
+
+\begin{code}
+total
+plus_commutes : (n : Nat) -> (m : Nat) -> n + m = m + n
+plus_commutes Z m = ?plus_commutes_Z
+plus_commutes (S k) m = ?plus_commutes_S
+\end{code}
+
+\subsection{Base Case}
+
+We can create a separate lemma for the base case interactively, by pressing
+\mklem{} with the cursor over \texttt{plus\_commutes\_Z}.
+This yields:
+
+\begin{code}
+plus_commutes_Z : m = plus m 0
+
+total
+plus_commutes : (n : Nat) -> (m : Nat) -> n + m = m + n
+plus_commutes Z m = plus_commutes_Z
+plus_commutes (S k) m = ?plus_commutes_S
+\end{code}
+
+\noindent
+That is, the metavariable has been filled with a call to a top level function
+\texttt{plus\_commutes\_Z}. The argument \texttt{m} has been made implicit
+because it can be inferred from context when it is applied.
+
+Unfortunately, we cannot prove this lemma directly, since \texttt{plus} is
+defined by matching on its \emph{first} argument, and here \texttt{plus m 0}
+has a specific value for its \emph{second argument} (in fact, the left hand
+side of the equality has been reduced from \texttt{plus 0 m}.) Again, we
+can prove this by induction, this time on \texttt{m}. 
+
+First, create a template definition with \mkdef{}:
+
+\begin{code}
+plus_commutes_Z : m = plus m 0
+plus_commutes_Z = ?plus_commutes_Z_rhs
+\end{code}
+
+\noindent
+Since we are going to write this by induction on \texttt{m}, which is
+implciit, we will need to bring \texttt{m} into scope manually:
+
+\begin{code}
+plus_commutes_Z : m = plus m 0
+plus_commutes_Z {m} = ?plus_commutes_Z_rhs
+\end{code}
+
+\noindent
+Now, case split on \texttt{m} with \csplit{}:
+
+\begin{code}
+plus_commutes_Z : m = plus m 0
+plus_commutes_Z {m = Z} = ?plus_commutes_Z_rhs_1
+plus_commutes_Z {m = (S k)} = ?plus_commutes_Z_rhs_2
+\end{code}
+
+\noindent
+Checking the type of \texttt{plus\_commutes\_Z\_rhs\_1} shows the following,
+which is easily proved by reflection:
+
+\begin{code}
+--------------------------------------
+plus_commutes_Z_rhs_1 : 0 = 0
+\end{code}
+
+\noindent
+For such trivial proofs, we can let \Idris{} write the proof automatically
+by pressing \psearch{} with the cursor over \texttt{plus\_commutes\_Z\_rhs\_1}.
+This yields:
+
+\begin{code}
+plus_commutes_Z : m = plus m 0
+plus_commutes_Z {m = Z} = refl
+plus_commutes_Z {m = (S k)} = ?plus_commutes_Z_rhs_2
+\end{code}
+
+\noindent
+For \texttt{plus\_commutes\_Z\_rhs\_2}, we are not so lucky:
+
+\begin{code}
+  k : Nat
+--------------------------------------
+plus_commutes_Z_rhs_2 : S k = S (plus k 0)
+\end{code}
+
+\noindent
+Inductively, we should know that \texttt{k = plus k 0}, and we can get access
+to this inductive hypothesis by making a recursive call on k, as follows:
+
+\begin{code}
+plus_commutes_Z : m = plus m 0
+plus_commutes_Z {m = Z} = refl
+plus_commutes_Z {m = (S k)} = let rec = plus_commutes_Z {m=k} in
+                                  ?plus_commutes_Z_rhs_2
+\end{code}
+
+\noindent
+For \texttt{plus\_commutes\_Z\_rhs\_2}, we now see:
+
+\begin{code}
+  k : Nat
+  rec : k = plus k (fromInteger 0)
+--------------------------------------
+plus_commutes_Z_rhs_2 : S k = S (plus k 0)
+\end{code}
+
+\noindent
+Again, the \texttt{fromInteger 0} is merely due to \texttt{Nat} being an
+instance of the \texttt{Num} typeclass. So we know that \texttt{k = plus k 0},
+but how do we use this to update the goal to \texttt{S k = S k}?
+
+To achieve this, \Idris{} provides a \texttt{replace} function as part of the
+prelude:
+
+\begin{code}
+*pluscomm> :t replace
+replace : (x = y) -> P x -> P y
+\end{code}
+
+\noindent
+Given a proof that \texttt{x = y}, and a property \texttt{P} which holds for
+\texttt{x}, we can get a proof of the same property for \texttt{y}, because
+we know \texttt{x} and \texttt{y} must be the same. In practice, this function
+can be a little tricky to use because in general the implicit argument
+\texttt{P} can be hard to infer by unification, so \Idris{} provides a
+high level syntax which calculates the property and applies replace:
+
+\begin{code}
+rewrite prf in expr
+\end{code}
+
+\noindent
+If we have \texttt{prf : x = y}, and the required type for \texttt{expr} is
+some property of \texttt{x}, the \texttt{rewrite ... in} syntax will search
+for \texttt{x} in the required type of \texttt{expr} and replace it with
+\texttt{y}. Concretely, in our example, we can say:
+
+\begin{code}
+plus_commutes_Z {m = (S k)} = let rec = plus_commutes_Z {m=k} in
+                                  rewrite rec in ?plus_commutes_Z_rhs_2
+\end{code}
+
+\noindent
+Checking the type of \texttt{plus\_commutes\_Z\_rhs\_2} now gives:
+
+\begin{code}
+  k : Nat
+  rec : k = plus k (fromInteger 0)
+  _rewrite_rule : plus k 0 = k
+--------------------------------------
+plus_commutes_Z_rhs_2 : S (plus k 0) = S (plus k 0)
+\end{code}
+
+\noindent
+Using the rewrite rule \texttt{rec} (which we can see in the context here as
+\texttt{\_rewrite\_rule}\footnote{Note that the left and right hand sides of the
+equality have been swapped, because \texttt{replace} takes a proof of
+\texttt{x=y} and the property for \texttt{x}, not \texttt{y}.}, the goal type
+has been updated with \texttt{k} replaced by \texttt{plus k 0}.
+
+Alternatively, we could have applied the rewrite in the other direction using
+the \texttt{sym} function:
+
+\begin{code}
+*pluscomm> :t sym
+sym : (l = r) -> r = l
+\end{code}
+
+\begin{code}
+plus_commutes_Z {m = (S k)} = let rec = plus_commutes_Z {m=k} in
+                                  rewrite sym rec in ?plus_commutes_Z_rhs_2
+\end{code}
+
+\noindent
+In this case, inspecting the type of the hole gives:
+
+\begin{code}
+  k : Nat
+  rec : k = plus k (fromInteger 0)
+  _rewrite_rule : k = plus k 0
+--------------------------------------
+plus_commutes_Z_rhs_2 : S k = S k
+\end{code}
+
+\noindent
+Either way, we can use proof search (\psearch{}) to complete the proof,
+giving:
+
+\begin{code}
+plus_commutes_Z : m = plus m 0
+plus_commutes_Z {m = Z} = refl
+plus_commutes_Z {m = (S k)} = let rec = plus_commutes_Z {m=k} in
+                                  rewrite rec in refl
+\end{code}
+
+\noindent
+The base case is now complete.
+
+\subsection{Inductive Step}
+
+Our main theorem, \texttt{plus\_commutes} should currently be in the following
+state:
+
+\begin{code}
+total
+plus_commutes : (n : Nat) -> (m : Nat) -> n + m = m + n
+plus_commutes Z m = plus_commutes_Z
+plus_commutes (S k) m = ?plus_commutes_S
+\end{code}
+
+\noindent
+Looking again at the type of \texttt{plus\_commutes\_S}, we have:
+
+\begin{code}
+  k : Nat
+  m : Nat
+--------------------------------------
+plus_commutes_S : S (plus k m) = plus m (S k)
+\end{code}
+
+\noindent
+Conveniently, by induction we can immediately tell that \texttt{plus k m = plus m k},
+so let us rewrite directly by making a recursive call to \texttt{plus\_commutes}.
+We add this directly, by hand, as follows:
+
+\begin{code}
+total
+plus_commutes : (n : Nat) -> (m : Nat) -> n + m = m + n
+plus_commutes Z m = plus_commutes_Z
+plus_commutes (S k) m = rewrite plus_commutes k m in ?plus_commutes_S
+\end{code}
+
+Checking the type of \texttt{plus\_commutes\_S} now gives:
+
+\begin{code}
+  k : Nat
+  m : Nat
+  _rewrite_rule : plus m k = plus k m
+--------------------------------------
+plus_commutes_S : S (plus m k) = plus m (S k)
+\end{code}
+
+\noindent
+The good news is that \texttt{m} and \texttt{k} now appear in the correct order.
+However, we still have to show that the successor symbol \texttt{S} can be moved
+to the front in the right hand side of this equality. This remaining lemma
+takes a similar form to the \texttt{plus\_commutes\_Z}; we begin by making
+a new top level lemma with \mklem{}. This gives:
+
+\begin{code}
+plus_commutes_S : (k : Nat) -> (m : Nat) -> S (plus m k) = plus m (S k)
+\end{code}
+
+\noindent
+Unlike the previous case, \texttt{k} and \texttt{m} are not made implicit
+because we cannot in general infer arguments to a function from its result.
+Again, we make a template definition with \mkdef{}:
+
+\begin{code}
+plus_commutes_S : (k : Nat) -> (m : Nat) -> S (plus m k) = plus m (S k)
+plus_commutes_S k m = ?plus_commutes_S_rhs
+\end{code}
+
+\noindent
+Again, this is defined by induction over \texttt{m}, since \texttt{plus}
+is defined by matching on its first argument. The complete definition is:
+
+\begin{code}
+plus_commutes_S : (k : Nat) -> (m : Nat) -> S (plus m k) = plus m (S k)
+plus_commutes_S k Z = refl
+plus_commutes_S k (S j) = rewrite plus_commutes_S k j in refl
+\end{code}
+
+\noindent
+All metavariables have now been solved, and \texttt{plus\_commutes} has
+a \texttt{total} annotation, so we have completed the proof of commutativity
+of addition on natural numbers.
+
+
+
+
+
+
+
+
+

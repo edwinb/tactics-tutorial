@@ -1,0 +1,113 @@
+\section{Inductive Proofs}
+
+\label{sect:induction}
+
+Before embarking on proving \texttt{plus\_commutes} in \Idris{} itself, let
+us consider the overall structure of a proof of some property of
+natural numbers. Recall that they are defined recursively, as follows:
+
+\begin{code}
+data Nat : Type where
+     Z : Nat
+     S : Nat -> Nat
+\end{code}
+
+\noindent
+A \emph{total} function over natural numbers must both terminate, and cover
+all possible inputs. \Idris{} checks functions for totality by cheking that
+all inputs are covered, and that all recursive calls are on \emph{structurally
+smaller} values (so recursion will always reach a base case). Recalling
+\texttt{plus}:
+
+\begin{code}
+plus : Nat -> Nat -> Nat
+plus Z     m = m
+plus (S k) m = S (plus k m)
+\end{code}
+
+\noindent
+This is total because it covers all possible inputs (the first argument can
+only be \texttt{Z} or \texttt{S k} for some \texttt{k}, and the second 
+argument \texttt{m} covers all possible \texttt{Nat}s) and in the recursive
+call, \texttt{k} is structurally smaller than \texttt{S k} so the first argument
+will always reach the base case \texttt{Z} in any sequence of recursive calls.
+
+In some sense, this resembles a mathematical proof by induction (and this is
+no coincidence!). For some property \texttt{P} of a natural number \texttt{x},
+we can show that \texttt{P} holds for all \texttt{x} if:
+
+\begin{itemize}
+\item \texttt{P} holds for zero (the base case).
+\item Assuming that \texttt{P} holds for \texttt{k}, we can show \texttt{P}
+also holds for \texttt{S k} (the inductive step).
+\end{itemize}
+
+\noindent
+In \texttt{plus}, the property we are trying to show is somewhat trivial (for
+all natural numbers \texttt{x}, there is a \texttt{Nat} which need not have any
+relation to \texttt{x}). However, it still takes the form of a base case
+and an inductive step. In the base case, we show that there is a \texttt{Nat}
+arising from \texttt{plus n m} when \texttt{n = Z}, and in the inductive
+step we show that there is a \texttt{Nat} arising when \texttt{n = S k}
+and we know we can get a \texttt{Nat} inductively from \texttt{plus k m}.
+%
+We could even write a function capturing all such inductive definitions:
+
+\begin{code}
+nat_induction : (P : Nat -> Type) ->             -- Property to show
+                (P Z) ->                         -- Base case 
+                ((k : Nat) -> P k -> P (S k)) -> -- Inductive step
+                (x : Nat) ->                     -- Show for all x
+                P x
+nat_induction P p_Z p_S Z = p_Z
+nat_induction P p_Z p_S (S k) = p_S k (nat_induction P p_Z p_S k)
+\end{code}
+
+\noindent
+Using \texttt{nat\_induction}, we can implement an equivalent inductive
+version of \texttt{plus}:
+
+\begin{code}
+plus_ind : Nat -> Nat -> Nat
+plus_ind n m 
+   = nat_induction (\x => Nat)
+                   m                      -- Base case, plus_ind Z m
+                   (\k, k_rec => S k_rec) -- Inductive step plus_ind (S k) m
+                                          -- where k_rec = plus_ind k m
+                   n 
+\end{code}
+
+\noindent
+To prove that \texttt{plus n m = plus m n} for all natural numbers \texttt{n}
+and \texttt{m}, we can also use induction. Either we can fix \texttt{m} and
+perform induction on \texttt{n}, or vice versa. We can sketch an outline of
+a proof; performing induction on 
+\texttt{n}, we have:
+
+\begin{itemize}
+\item Property \texttt{P} is \texttt{$\backslash$x => plus x m = plus m x}.
+\item Show that \texttt{P} holds in the base case and inductive step:
+\begin{itemize}
+\item Base case: \texttt{P Z}, i.e. \\
+\texttt{plus Z m = plus m Z}, which reduces to \\
+\texttt{m = plus m Z} due to the definition of \texttt{plus}.
+\item Inductive step: Inductively, we know that \texttt{P k} holds for a
+specific, fixed \texttt{k}, i.e.\\
+\texttt{plus k m = plus m k} (the induction hypothesis). Given this,
+show \texttt{P (S k)}, i.e. \\
+\texttt{plus (S k) m = plus m (S k)}, which
+reduces to \\
+\texttt{S (plus k m) = plus m (S k)}. From the induction hypothesis, we can rewrite this to \\
+\texttt{S (plus m k) = plus m (S k)}.
+\end{itemize}
+\end{itemize}
+
+\noindent
+To complete the proof we therefore need to show that \texttt{m = plus m Z}
+for all natural numbers \texttt{m}, and that \texttt{S (plus m k) = plus m (S k)}
+for all natural numbers \texttt{m} and \texttt{k}. Each of these can also
+be proved by induction, this time on \texttt{m}.
+
+We are now ready to embark on a proof of commutativity of \texttt{plus}
+formally in \Idris{}.
+
