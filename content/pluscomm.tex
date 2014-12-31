@@ -12,11 +12,11 @@ plus (S k) m = S (plus k m)
 \noindent
 It is defined by the above equations, meaning that we have for free the
 properties that adding \texttt{m} to zero always results in \texttt{m},
-and that adding \texttt{m} to any non-zero number \texttt{S k} always results 
+and that adding \texttt{m} to any non-zero number \texttt{S k} always results
 in \texttt{S (plus k m)}. We can see this by evaluation at the \Idris{}
 REPL (i.e. the prompt, the read-eval-print loop):
 
-\begin{lstlisting}
+\begin{lstlisting}[style=stdout]
 Idris> \m => plus Z m
 \m => m : Nat -> Nat
 
@@ -38,7 +38,7 @@ example:
 \item It is \emph{commutative}, that is for all \texttt{Nat} inputs
 \texttt{n} and \texttt{m}, we know that \texttt{plus n m = plus m n}.
 \item It is \emph{associative}, that is for all \texttt{Nat} inputs
-\texttt{n}, \texttt{m} and \texttt{p}, 
+\texttt{n}, \texttt{m} and \texttt{p},
 we know that \texttt{plus n (plus m p) = plus (plus m n) p}.
 \end{itemize}
 
@@ -59,16 +59,16 @@ data (=) : a -> b -> Type where
 \noindent
 Note that this must be built-in, rather than defined in the library,
 because \texttt{=} is a reserved operator --- you cannot define this directly
-in your own code. 
+in your own code.
 
 It is \emph{propositional}
 equality, where the type states that any two values in different types
 \texttt{a} and \texttt{b} may be proposed to be equal.
 There is only one way to \emph{prove} equality, however, which is by
-reflexivity (\texttt{refl}). 
+reflexivity (\texttt{refl}).
 
 We have a \emph{type} for propositional equality here, and correspondingly
-a \emph{program} inhabiting an instance of this type can be seen as a proof 
+a \emph{program} inhabiting an instance of this type can be seen as a proof
 of the corresponding proposition\footnote{This is known as the Curry-Howard
 corrsepondence~\cite{howard}}.
 So, trivially, we can prove that \texttt{4}
@@ -132,7 +132,7 @@ plus_reduces_Sk k m = refl
 
 \subsection{Heterogeneous Equality}
 
-Equality in \Idris{} is \emph{heterogeneous}, meaning that 
+Equality in \Idris{} is \emph{heterogeneous}, meaning that
 we can even propose equalities between values in different types:
 
 \begin{code}
@@ -194,4 +194,3 @@ In the remainder of this tutorial, we will explore several different ways
 of proving \texttt{plus\_commutes} (or, to put it another way, writing the
 function.) We will also discuss how to use such equality proofs, and see where
 the need for them arises in practice.
-
